@@ -24,6 +24,9 @@ const float HEIGHT = 600.0f;
 const float PIECE_WIDTH = WIDTH / COLS;
 const float PIECE_HEIGHT = HEIGHT / ROWS;
 
+const sf::Color GRAY{ 176,176,176,255 };
+const sf::Color GREEN{ 56,220,76,255 };
+
 
 class Game
 {
@@ -38,8 +41,13 @@ public:
 private:
 
 	void processEvents();
-	void processKeys(sf::Event t_event);
+	void processKeys(sf::Event t_event); 
+	void processMousePress(sf::Event t_event);
+	void processMouseMove(sf::Event t_event);
+	void processMouseRelease(sf::Event t_event);
+	void processMouseWheel(sf::Event t_event);
 	void update(sf::Time t_deltaTime);
+	void updateVectors();
 	void render();
 	
 	void setupFontAndText();
@@ -55,6 +63,8 @@ private:
 	MyVector3 m_startingPoints[NO_OF_VERTECIES];
 	MyVector3 m_currentPoint[NO_OF_VERTECIES];
 	bool m_exitGame; // control exiting game
+	int m_currentPiece = -1;
+	bool m_selected{ false };
 
 
 };

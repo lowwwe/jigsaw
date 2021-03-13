@@ -77,6 +77,14 @@ void Game::processEvents()
 		{
 			processKeys(newEvent);
 		}
+		if (sf::Event::MouseButtonPressed == newEvent.type)
+		{
+			processMousePress(newEvent);
+		}
+		if (sf::Event::MouseButtonReleased == newEvent.type)
+		{
+			processMouseRelease(newEvent);
+		}
 	}
 }
 
@@ -93,15 +101,98 @@ void Game::processKeys(sf::Event t_event)
 	}
 }
 
+void Game::processMousePress(sf::Event t_event)
+{
+	MyVector3 mouse{ static_cast<float>(t_event.mouseButton.x), static_cast<float>(t_event.mouseButton.y), 0.0f };
+	float dotProduct = 0.0f;
+	MyVector3 A, B;
+	bool inside = true;
+	if (!m_selected)
+	{
+		for (int i = 0; i < NO_OF_PIECES; i++)
+		{
+			
+			inside = true;
+			for (int j = 0; j < 4; j++)
+			{
+				A = m_currentPoint[i * 4 + j] - m_currentPoint[i * 4 + (j + 1)%4];
+				B = mouse -m_currentPoint[i * 4 + (j + 1) % 4] ;
+				dotProduct = A.dot(B);
+				if (dotProduct < 0.0f)
+				{
+					inside = false;
+				}
+				A = m_currentPoint[i * 4 + (j + 1) % 4] - m_currentPoint[i * 4 + j ];
+				B = mouse - m_currentPoint[i * 4 + j ];
+				dotProduct = A.dot(B);
+				if (dotProduct < 0.0f)
+				{
+					inside = false;
+				}
+
+			}
+			if (inside)
+			{
+				m_currentPiece = i;
+				m_selected = true;
+				for (int j = 0; j < 4; j++)
+				{
+					m_pieces[i * 4 + j].color = GRAY;
+				}
+				for (int j = 0; j < 8; j++)
+				{
+					m_lines[i * 8 + j].color = sf::Color::Yellow;
+				}
+
+			}			
+			
+		}
+	}
+}
+
+void Game::processMouseMove(sf::Event t_event)
+{
+}
+
+void Game::processMouseRelease(sf::Event t_event)
+{
+	if (m_selected)
+	{
+		for (int j = 0; j < 8; j++)
+		{
+			m_lines[m_currentPiece * 8 + j].color = sf::Color::Black;
+		}
+		for (int j = 0; j < 4; j++)
+		{
+			m_pieces[m_currentPiece * 4 + j].color = sf::Color::White;
+		}
+		m_currentPiece = -1;
+		m_selected = false;
+	}
+}
+
+void Game::processMouseWheel(sf::Event t_event)
+{
+}
+
 /// <summary>
 /// Update the game world
 /// </summary>
 /// <param name="t_deltaTime">time interval per frame</param>
 void Game::update(sf::Time t_deltaTime)
 {
+	updateVectors();
 	if (m_exitGame)
 	{
 		m_window.close();
+	}
+}
+
+void Game::updateVectors()
+{
+	for (int i = 0; i < NO_OF_VERTECIES; i++)
+	{
+		m_currentPoint[i] = m_startingPoints[i];
 	}
 }
 
@@ -110,7 +201,7 @@ void Game::update(sf::Time t_deltaTime)
 /// </summary>
 void Game::render()
 {
-	m_window.clear(sf::Color::Green);
+	m_window.clear(GREEN);
 	m_window.draw(m_welcomeMessage);
 	m_window.draw(m_pieces,&m_pictureTexture);
 	m_window.draw(m_lines);
@@ -143,8 +234,6 @@ void Game::setupSprite()
 {
 	int currentVertex = 0;
 	sf::Vector2f  topLeft{};
-	float textureX;
-	float textureY;
 	sf::Vertex vertexPiece{ sf::Vector2f{0.0f,0.0f}, sf::Color::White };
 	sf::Vertex vertexLine{ sf::Vector2f{0.0f,0.0f}, sf::Color::Black };
 	sf::Vertex lineStart;
@@ -175,18 +264,24 @@ void Game::setupSprite()
 			vertexLine.position = vertexPiece.position;
 			m_lines.append(vertexLine);
 			lineStart = vertexLine;
+			m_startingPoints[currentVertex++] = vertexPiece.position;
+
 			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH,0.0f};
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j+1) / ROWS * pixelsWide, static_cast<float>(i) / COLS * pixelsTall };
 			m_pieces.append(vertexPiece);
 			vertexLine.position = vertexPiece.position;
 			m_lines.append(vertexLine);
 			m_lines.append(vertexLine);
+			m_startingPoints[currentVertex++] = vertexPiece.position;
+			
 			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH, PIECE_HEIGHT };
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j + 1) / ROWS * pixelsWide, static_cast<float>(i+1) / COLS * pixelsTall };
 			m_pieces.append(vertexPiece);
 			vertexLine.position = vertexPiece.position;
 			m_lines.append(vertexLine);
 			m_lines.append(vertexLine);
+			m_startingPoints[currentVertex++] = vertexPiece.position;
+			
 			vertexPiece.position = topLeft + sf::Vector2f{ 0.0f, PIECE_HEIGHT };
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j)  / ROWS * pixelsWide, static_cast<float>(i + 1) / COLS * pixelsTall };
 			m_pieces.append(vertexPiece);
@@ -194,6 +289,7 @@ void Game::setupSprite()
 			m_lines.append(vertexLine);
 			m_lines.append(vertexLine);
 			m_lines.append(lineStart);
+			m_startingPoints[currentVertex++] = vertexPiece.position;
 
 		}
 	}
