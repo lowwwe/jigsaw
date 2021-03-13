@@ -17,7 +17,7 @@
 /// load and setup thne image
 /// </summary>
 Game::Game() :
-	m_window{ sf::VideoMode{ 800U, 600U, 32U }, "SFML Game" },
+	m_window{ sf::VideoMode{ 600U, 800U, 32U }, "JigSaw" },
 	m_exitGame{false} //when true game will exit
 {
 	setupFontAndText(); // load font 
@@ -110,9 +110,10 @@ void Game::update(sf::Time t_deltaTime)
 /// </summary>
 void Game::render()
 {
-	m_window.clear(sf::Color::White);
+	m_window.clear(sf::Color::Green);
 	m_window.draw(m_welcomeMessage);
-	m_window.draw(m_logoSprite);
+	m_window.draw(m_pieces,&m_pictureTexture);
+	m_window.draw(m_lines);
 	m_window.display();
 }
 
@@ -126,13 +127,12 @@ void Game::setupFontAndText()
 		std::cout << "problem loading arial black font" << std::endl;
 	}
 	m_welcomeMessage.setFont(m_ArialBlackfont);
-	m_welcomeMessage.setString("SFML Game");
-	m_welcomeMessage.setStyle(sf::Text::Underlined | sf::Text::Italic | sf::Text::Bold);
-	m_welcomeMessage.setPosition(40.0f, 40.0f);
-	m_welcomeMessage.setCharacterSize(80U);
-	m_welcomeMessage.setOutlineColor(sf::Color::Red);
+	m_welcomeMessage.setString("JigSaw");
+	
+	m_welcomeMessage.setPosition(20.0f, 20.0f);
+	m_welcomeMessage.setCharacterSize(30U);	
 	m_welcomeMessage.setFillColor(sf::Color::Black);
-	m_welcomeMessage.setOutlineThickness(3.0f);
+	
 
 }
 
@@ -141,11 +141,62 @@ void Game::setupFontAndText()
 /// </summary>
 void Game::setupSprite()
 {
-	if (!m_logoTexture.loadFromFile("ASSETS\\IMAGES\\SFML-LOGO.png"))
+	int currentVertex = 0;
+	sf::Vector2f  topLeft{};
+	float textureX;
+	float textureY;
+	sf::Vertex vertexPiece{ sf::Vector2f{0.0f,0.0f}, sf::Color::White };
+	sf::Vertex vertexLine{ sf::Vector2f{0.0f,0.0f}, sf::Color::Black };
+	sf::Vertex lineStart;
+	float pixelsWide = 0.0f;;
+	float pixelsTall = 0.0f ;
+
+	
+	m_pieces.clear();
+	if (!m_pictureTexture.loadFromFile("ASSETS\\IMAGES\\bloodrage.jpg"))
 	{
 		// simple error message if previous call fails
 		std::cout << "problem loading logo" << std::endl;
 	}
-	m_logoSprite.setTexture(m_logoTexture);
-	m_logoSprite.setPosition(300.0f, 180.0f);
+
+	 pixelsWide = static_cast<float>(m_pictureTexture.getSize().x);
+	 pixelsTall = static_cast<float>(m_pictureTexture.getSize().y);
+
+
+	for (int i = 0; i < ROWS; i++)
+	{
+		for (int j = 0; j < COLS; j++)
+		{
+			topLeft = sf::Vector2f{ TOP_LEFT.x + j * PIECE_WIDTH, TOP_LEFT.y + i * PIECE_HEIGHT };
+			std::cout << topLeft.x << "," << topLeft.y << std::endl;
+			vertexPiece.position = topLeft;
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j) / ROWS * pixelsWide, static_cast<float>(i) / COLS * pixelsTall };
+			m_pieces.append(vertexPiece);
+			vertexLine.position = vertexPiece.position;
+			m_lines.append(vertexLine);
+			lineStart = vertexLine;
+			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH,0.0f};
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j+1) / ROWS * pixelsWide, static_cast<float>(i) / COLS * pixelsTall };
+			m_pieces.append(vertexPiece);
+			vertexLine.position = vertexPiece.position;
+			m_lines.append(vertexLine);
+			m_lines.append(vertexLine);
+			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH, PIECE_HEIGHT };
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j + 1) / ROWS * pixelsWide, static_cast<float>(i+1) / COLS * pixelsTall };
+			m_pieces.append(vertexPiece);
+			vertexLine.position = vertexPiece.position;
+			m_lines.append(vertexLine);
+			m_lines.append(vertexLine);
+			vertexPiece.position = topLeft + sf::Vector2f{ 0.0f, PIECE_HEIGHT };
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j)  / ROWS * pixelsWide, static_cast<float>(i + 1) / COLS * pixelsTall };
+			m_pieces.append(vertexPiece);
+			vertexLine.position = vertexPiece.position;
+			m_lines.append(vertexLine);
+			m_lines.append(vertexLine);
+			m_lines.append(lineStart);
+
+		}
+	}
+
+	
 }
