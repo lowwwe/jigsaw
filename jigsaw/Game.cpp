@@ -17,7 +17,7 @@
 /// load and setup thne image
 /// </summary>
 Game::Game() :
-	m_window{ sf::VideoMode{ 600U, 800U, 32U }, "JigSaw" },
+	m_window{ sf::VideoMode{ 800U, 1000U, 32U }, "JigSaw twelve piece array" },
 	m_exitGame{false} //when true game will exit
 {
 	setupFontAndText(); // load font 
@@ -69,22 +69,27 @@ void Game::processEvents()
 	sf::Event newEvent;
 	while (m_window.pollEvent(newEvent))
 	{
-		if ( sf::Event::Closed == newEvent.type) // window message
+		switch (newEvent.type)
 		{
+		case sf::Event::Closed:
 			m_exitGame = true;
-		}
-		if (sf::Event::KeyPressed == newEvent.type) //user pressed a key
-		{
+			break;
+		case sf::Event::KeyPressed :
 			processKeys(newEvent);
-		}
-		if (sf::Event::MouseButtonPressed == newEvent.type)
-		{
+			break;
+		case sf::Event::MouseButtonPressed :
 			processMousePress(newEvent);
-		}
-		if (sf::Event::MouseButtonReleased == newEvent.type)
-		{
+			break;
+		case sf::Event::MouseButtonReleased:
 			processMouseRelease(newEvent);
-		}
+			break;
+		case sf::Event::MouseMoved:
+			processMouseMove(newEvent);
+			break;
+		case sf::Event::MouseWheelMoved :
+			processMouseWheel(newEvent);
+			break;
+		}		
 	}
 }
 
@@ -95,35 +100,70 @@ void Game::processEvents()
 /// <param name="t_event">key press event</param>
 void Game::processKeys(sf::Event t_event)
 {
-	if (sf::Keyboard::Escape == t_event.key.code)
+	switch (t_event.key.code)
 	{
-		m_exitGame = true;
+		case sf::Keyboard::Escape:
+			m_exitGame = true;
+			break;
+		case sf::Keyboard::R:
+			reset();
+			break;
+		case sf::Keyboard::S:
+			randomise();
+			break;
+		case sf::Keyboard::N:
+			nextPicture();
+			break;
+		case sf::Keyboard::Add:
+			rotate(5);
+			break;
+		case sf::Keyboard:: Equal:
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::RShift))
+			{
+				rotate(5);
+			}
+			break;
+
+		case sf::Keyboard::Subtract:
+			rotate(-5);
+			break;
+		case sf::Keyboard::Dash  :
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::RShift))
+			{
+				rotate(-5);
+			}
+			break;
+
+
 	}
+
 }
 
 void Game::processMousePress(sf::Event t_event)
 {
 	MyVector3 mouse{ static_cast<float>(t_event.mouseButton.x), static_cast<float>(t_event.mouseButton.y), 0.0f };
+	m_mouseStart = mouse;
 	float dotProduct = 0.0f;
+	float angle;
 	MyVector3 A, B;
 	bool inside = true;
 	if (!m_selected)
 	{
-		for (int i = 0; i < NO_OF_PIECES; i++)
+		for (int i = 0; i < NO_OF_PIECES && !m_selected; i++)
 		{
 			
 			inside = true;
 			for (int j = 0; j < 4; j++)
 			{
-				A = m_currentPoint[i * 4 + j] - m_currentPoint[i * 4 + (j + 1)%4];
-				B = mouse -m_currentPoint[i * 4 + (j + 1) % 4] ;
+				A = m_currentPoints[i * 4 + j] - m_currentPoints[i * 4 + (j + 1)%4];
+				B = mouse -m_currentPoints[i * 4 + (j + 1) % 4] ;
 				dotProduct = A.dot(B);
 				if (dotProduct < 0.0f)
 				{
 					inside = false;
 				}
-				A = m_currentPoint[i * 4 + (j + 1) % 4] - m_currentPoint[i * 4 + j ];
-				B = mouse - m_currentPoint[i * 4 + j ];
+				A = m_currentPoints[i * 4 + (j + 1) % 4] - m_currentPoints[i * 4 + j ];
+				B = mouse - m_currentPoints[i * 4 + j ];
 				dotProduct = A.dot(B);
 				if (dotProduct < 0.0f)
 				{
@@ -131,6 +171,22 @@ void Game::processMousePress(sf::Event t_event)
 				}
 
 			}
+		
+				angle = 0.0f;
+				for (int j = 0; j < 4; j++)
+				{
+					A = mouse - m_currentPoints[i * 4 + j] ;
+					B = mouse - m_currentPoints[i * 4 + (j + 1) % 4];
+					angle += A.angleBetween(B);
+				}
+				if (angle > 359.0f && angle < 361.0f)
+				{
+					inside = true;
+				}
+				else
+				{
+					inside = false;
+				}
 			if (inside)
 			{
 				m_currentPiece = i;
@@ -152,6 +208,12 @@ void Game::processMousePress(sf::Event t_event)
 
 void Game::processMouseMove(sf::Event t_event)
 {
+	MyVector3 currentMouse= { static_cast<float>(t_event.mouseMove.x), static_cast<float>(t_event.mouseMove.y), 0.0f };
+	if (m_selected)
+	{
+		m_translations[m_currentPiece] +=  currentMouse - m_mouseStart;
+		m_mouseStart = currentMouse;
+	}
 }
 
 void Game::processMouseRelease(sf::Event t_event)
@@ -173,6 +235,10 @@ void Game::processMouseRelease(sf::Event t_event)
 
 void Game::processMouseWheel(sf::Event t_event)
 {
+	if (m_selected)
+	{
+		m_rotations[m_currentPiece] += t_event.mouseWheel.delta *5;		
+	}
 }
 
 /// <summary>
@@ -190,9 +256,75 @@ void Game::update(sf::Time t_deltaTime)
 
 void Game::updateVectors()
 {
+	int lastOne;
 	for (int i = 0; i < NO_OF_VERTECIES; i++)
 	{
-		m_currentPoint[i] = m_startingPoints[i];
+		m_currentPoints[i] = m_startingPoints[i];
+		
+	}
+	rotate();
+	translate();
+
+	for (int i = 0; i < NO_OF_VERTECIES; i++)
+	{
+		m_pieces[i].position = m_currentPoints[i];
+		m_lines[i * 2].position = m_currentPoints[i];
+		lastOne = i + 1 -((i+1)/4 - i/4 )*4;
+		m_lines[i * 2 + 1].position = m_currentPoints[lastOne];
+	}
+}
+
+void Game::updateCentres()
+{
+	MyVector3 centre{};
+	for (int i = 0; i < NO_OF_PIECES; i++)
+	{
+		centre = { 0.0f,0.0f,0.0f };
+		for (int j = 0; j < 4; j++)
+		{
+			centre += m_startingPoints[i * 4 + j];
+		}
+		m_centres[i] = centre / 4.0f;
+	}
+}
+
+void Game::translate()
+{
+	MyMatrix translate;
+	for (int i = 0; i < NO_OF_PIECES; i++)
+	{
+		if (m_translations[i].lengthSquared() < 10.9f)
+		{
+			m_translations[i] = { 0.0f,0.0f,0.0f };
+		}
+		translate = MyMatrix::translation(m_translations[i]);
+		for (int j = 0; j < 4; j++)
+		{
+			m_currentPoints[i * 4 + j] = translate * m_currentPoints[i * 4 + j];
+		}
+	}
+}
+
+void Game::rotate()
+{
+	MyMatrix rotate;
+	MyMatrix translate;
+	MyMatrix translateback;
+	MyMatrix compound;
+	updateCentres();
+	for (int i = 0; i < NO_OF_PIECES; i++)
+	{
+		rotate = MyMatrix::rotationClockwiseZ(m_rotations[i]);
+		translate = MyMatrix::translation(-m_centres[i]);
+		translateback = translate.getInverse();
+		compound = translate * rotate * translateback;
+		for (int j = 0; j < 4; j++)
+		{
+			m_currentPoints[i * 4 + j] = translate * m_currentPoints[i * 4 + j];
+			m_currentPoints[i * 4 + j] = rotate * m_currentPoints[i * 4 + j];
+			m_currentPoints[i * 4 + j] = translateback * m_currentPoints[i * 4 + j];
+		}
+		
 	}
 }
 
@@ -203,9 +335,52 @@ void Game::render()
 {
 	m_window.clear(GREEN);
 	m_window.draw(m_welcomeMessage);
+	m_window.draw(m_ouitline);
 	m_window.draw(m_pieces,&m_pictureTexture);
 	m_window.draw(m_lines);
 	m_window.display();
+}
+
+void Game::reset()
+{
+	for (int i = 0; i < NO_OF_PIECES; i++)
+	{
+		m_rotations[i] = 0.0f;
+		m_translations[i] = { 0.0f,0.0f,0.0f };
+	}
+}
+
+void Game::randomise()
+{
+	for (int i = 0; i < NO_OF_PIECES; i++)
+	{
+		m_rotations[i] = static_cast<float>( (std::rand() % 36)*5);
+		m_translations[i] = { std::rand() % 800 - m_centres[i].x,
+							std::rand() % 1000 - m_centres[i].y, 1.0f };
+			
+	}
+}
+
+void Game::nextPicture()
+{
+	m_currentFile = (m_currentFile + 1) % 5;
+	if (!m_pictureTexture.loadFromFile("ASSETS\\IMAGES\\" + m_fileNames[m_currentFile]))
+	{
+		// simple error message if previous call fails
+		std::cout << "problem loading Picture " << m_currentFile << std::endl;
+	}
+	float pixelsWide = static_cast<float>(m_pictureTexture.getSize().x);
+	float pixelsTall = static_cast<float>(m_pictureTexture.getSize().y);
+	for (int i = 0; i < ROWS; i++)
+	{
+		for (int j = 0; j < COLS; j++)
+		{
+			m_pieces[i*4*COLS + j * 4].texCoords = sf::Vector2f{ static_cast<float>(j) / COLS * pixelsWide, static_cast<float>(i) / ROWS * pixelsTall };
+			m_pieces[i * 4 * COLS + j * 4 +1].texCoords = sf::Vector2f{ static_cast<float>(j + 1) / COLS * pixelsWide, static_cast<float>(i) / ROWS * pixelsTall };
+			m_pieces[i * 4 * COLS + j * 4 +2].texCoords = sf::Vector2f{ static_cast<float>(j + 1) / COLS * pixelsWide, static_cast<float>(i + 1) / ROWS * pixelsTall };
+			m_pieces[i * 4 * COLS + j * 4 +3].texCoords = sf::Vector2f{ static_cast<float>(j) / COLS * pixelsWide, static_cast<float>(i + 1) / ROWS * pixelsTall };
+		}
+	}
 }
 
 /// <summary>
@@ -218,10 +393,10 @@ void Game::setupFontAndText()
 		std::cout << "problem loading arial black font" << std::endl;
 	}
 	m_welcomeMessage.setFont(m_ArialBlackfont);
-	m_welcomeMessage.setString("JigSaw");
+	m_welcomeMessage.setString("Drag pieces to correct location \nUse mouse wheel to rotate or (+,-)\nS to start puzzle\nN for a new puzzle\nR to reset puzzle");
 	
 	m_welcomeMessage.setPosition(20.0f, 20.0f);
-	m_welcomeMessage.setCharacterSize(30U);	
+	m_welcomeMessage.setCharacterSize(20U);	
 	m_welcomeMessage.setFillColor(sf::Color::Black);
 	
 
@@ -237,6 +412,7 @@ void Game::setupSprite()
 	sf::Vertex vertexPiece{ sf::Vector2f{0.0f,0.0f}, sf::Color::White };
 	sf::Vertex vertexLine{ sf::Vector2f{0.0f,0.0f}, sf::Color::Black };
 	sf::Vertex lineStart;
+	sf::Vertex vertexOutline{ sf::Vector2f{0.0f,0.0f}, DARKGREEN };
 	float pixelsWide = 0.0f;;
 	float pixelsTall = 0.0f ;
 
@@ -245,7 +421,7 @@ void Game::setupSprite()
 	if (!m_pictureTexture.loadFromFile("ASSETS\\IMAGES\\bloodrage.jpg"))
 	{
 		// simple error message if previous call fails
-		std::cout << "problem loading logo" << std::endl;
+		std::cout << "problem loading Picture" << std::endl;
 	}
 
 	 pixelsWide = static_cast<float>(m_pictureTexture.getSize().x);
@@ -256,43 +432,68 @@ void Game::setupSprite()
 	{
 		for (int j = 0; j < COLS; j++)
 		{
-			topLeft = sf::Vector2f{ TOP_LEFT.x + j * PIECE_WIDTH, TOP_LEFT.y + i * PIECE_HEIGHT };
-			std::cout << topLeft.x << "," << topLeft.y << std::endl;
+			topLeft = sf::Vector2f{ TOP_LEFT.x + j * PIECE_WIDTH, TOP_LEFT.y + i * PIECE_HEIGHT };			
 			vertexPiece.position = topLeft;
-			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j) / ROWS * pixelsWide, static_cast<float>(i) / COLS * pixelsTall };
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j) / COLS * pixelsWide, static_cast<float>(i) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
 			vertexLine.position = vertexPiece.position;
+			vertexOutline.position = vertexPiece.position;
+			m_ouitline.append(vertexOutline);
 			m_lines.append(vertexLine);
 			lineStart = vertexLine;
-			m_startingPoints[currentVertex++] = vertexPiece.position;
-
+			m_startingPoints[currentVertex] = vertexPiece.position;
+			m_startingPoints[currentVertex++].z = 1.0f;
+			
 			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH,0.0f};
-			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j+1) / ROWS * pixelsWide, static_cast<float>(i) / COLS * pixelsTall };
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j+1) / COLS * pixelsWide, static_cast<float>(i) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
 			vertexLine.position = vertexPiece.position;
 			m_lines.append(vertexLine);
 			m_lines.append(vertexLine);
-			m_startingPoints[currentVertex++] = vertexPiece.position;
+			vertexOutline.position = vertexPiece.position;
+			m_ouitline.append(vertexOutline);
+			m_ouitline.append(vertexOutline);
+			m_startingPoints[currentVertex] = vertexPiece.position;
+			m_startingPoints[currentVertex++].z = 1.0f;
+
 			
 			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH, PIECE_HEIGHT };
-			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j + 1) / ROWS * pixelsWide, static_cast<float>(i+1) / COLS * pixelsTall };
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j + 1) / COLS * pixelsWide, static_cast<float>(i+1) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
 			vertexLine.position = vertexPiece.position;
 			m_lines.append(vertexLine);
 			m_lines.append(vertexLine);
-			m_startingPoints[currentVertex++] = vertexPiece.position;
-			
+			vertexOutline.position = vertexPiece.position;
+			m_ouitline.append(vertexOutline);
+			m_ouitline.append(vertexOutline);
+			m_startingPoints[currentVertex] = vertexPiece.position;
+			m_startingPoints[currentVertex++].z = 1.0f;
+
 			vertexPiece.position = topLeft + sf::Vector2f{ 0.0f, PIECE_HEIGHT };
-			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j)  / ROWS * pixelsWide, static_cast<float>(i + 1) / COLS * pixelsTall };
+			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j)  / COLS * pixelsWide, static_cast<float>(i + 1) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
 			vertexLine.position = vertexPiece.position;
 			m_lines.append(vertexLine);
 			m_lines.append(vertexLine);
+			vertexOutline.position = vertexPiece.position;
+			m_ouitline.append(vertexOutline);
+			m_ouitline.append(vertexOutline);
 			m_lines.append(lineStart);
-			m_startingPoints[currentVertex++] = vertexPiece.position;
+			vertexOutline.position = lineStart.position;
+			m_ouitline.append(vertexOutline);
+			m_startingPoints[currentVertex] = vertexPiece.position;
+			m_startingPoints[currentVertex++].z = 1.0f;
 
 		}
 	}
 
 	
+}
+
+void Game::rotate(int t_angle)
+{
+	if (m_selected)
+	{
+		m_rotations[m_currentPiece] += t_angle;
+	}
 }
