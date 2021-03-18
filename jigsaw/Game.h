@@ -56,14 +56,18 @@ private:
 	void reset();
 	void randomise();
 	void nextPicture();
+	void checkScore();
 	
 	void setupFontAndText();
 	void setupSprite();
 	void rotate(int t_angle);
+	void addOneVertex(sf::Vector2f t_position);
+	void addTwoVertexs(sf::Vector2f t_position);
 
 	sf::RenderWindow m_window; // main SFML window
 	sf::Font m_ArialBlackfont; // font used by message
 	sf::Text m_welcomeMessage; // text used for message on screen
+	sf::Text m_score;
 	sf::Texture m_pictureTexture; // texture used for sfml logo
 	
 	sf::VertexArray m_lines{ sf::Lines };

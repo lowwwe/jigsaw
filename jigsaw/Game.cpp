@@ -252,6 +252,7 @@ void Game::update(sf::Time t_deltaTime)
 	{
 		m_window.close();
 	}
+	//checkScore();
 }
 
 void Game::updateVectors()
@@ -270,7 +271,7 @@ void Game::updateVectors()
 		m_pieces[i].position = m_currentPoints[i];
 		m_lines[i * 2].position = m_currentPoints[i];
 		lastOne = i + 1 -((i+1)/4 - i/4 )*4;
-		m_lines[i * 2 + 1].position = m_currentPoints[lastOne];
+ 		m_lines[i * 2 + 1].position = m_currentPoints[lastOne];
 	}
 }
 
@@ -338,6 +339,7 @@ void Game::render()
 	m_window.draw(m_ouitline);
 	m_window.draw(m_pieces,&m_pictureTexture);
 	m_window.draw(m_lines);
+	m_window.draw(m_score);
 	m_window.display();
 }
 
@@ -383,6 +385,19 @@ void Game::nextPicture()
 	}
 }
 
+void Game::checkScore()
+{
+	int correct = 0;
+	for (int i = 0; i < NO_OF_PIECES; i++)
+	{
+		if (m_rotations[i] == 0.0f && m_translations[i] == MyVector3{0.0f, 0.0f, 0.0f})
+		{
+			correct++;
+		}
+	}
+	m_score.setString(std::to_string(correct) + "/" + std::to_string(NO_OF_PIECES));
+}
+
 /// <summary>
 /// load the font and setup the text message for screen
 /// </summary>
@@ -399,6 +414,13 @@ void Game::setupFontAndText()
 	m_welcomeMessage.setCharacterSize(20U);	
 	m_welcomeMessage.setFillColor(sf::Color::Black);
 	
+	m_score.setFont(m_ArialBlackfont);
+	m_score.setString("");
+
+	m_score.setPosition(730.0f, 970.0f);
+	m_score.setCharacterSize(20U);
+	m_score.setFillColor(sf::Color::Black);
+	
 
 }
 
@@ -410,9 +432,8 @@ void Game::setupSprite()
 	int currentVertex = 0;
 	sf::Vector2f  topLeft{};
 	sf::Vertex vertexPiece{ sf::Vector2f{0.0f,0.0f}, sf::Color::White };
-	sf::Vertex vertexLine{ sf::Vector2f{0.0f,0.0f}, sf::Color::Black };
-	sf::Vertex lineStart;
-	sf::Vertex vertexOutline{ sf::Vector2f{0.0f,0.0f}, DARKGREEN };
+	sf::Vector2f startingCorner;
+
 	float pixelsWide = 0.0f;;
 	float pixelsTall = 0.0f ;
 
@@ -436,23 +457,16 @@ void Game::setupSprite()
 			vertexPiece.position = topLeft;
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j) / COLS * pixelsWide, static_cast<float>(i) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
-			vertexLine.position = vertexPiece.position;
-			vertexOutline.position = vertexPiece.position;
-			m_ouitline.append(vertexOutline);
-			m_lines.append(vertexLine);
-			lineStart = vertexLine;
+			addOneVertex(vertexPiece.position);
+			startingCorner = vertexPiece.position;
 			m_startingPoints[currentVertex] = vertexPiece.position;
 			m_startingPoints[currentVertex++].z = 1.0f;
 			
 			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH,0.0f};
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j+1) / COLS * pixelsWide, static_cast<float>(i) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
-			vertexLine.position = vertexPiece.position;
-			m_lines.append(vertexLine);
-			m_lines.append(vertexLine);
-			vertexOutline.position = vertexPiece.position;
-			m_ouitline.append(vertexOutline);
-			m_ouitline.append(vertexOutline);
+			addTwoVertexs(vertexPiece.position);
+			
 			m_startingPoints[currentVertex] = vertexPiece.position;
 			m_startingPoints[currentVertex++].z = 1.0f;
 
@@ -460,27 +474,17 @@ void Game::setupSprite()
 			vertexPiece.position = topLeft + sf::Vector2f{PIECE_WIDTH, PIECE_HEIGHT };
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j + 1) / COLS * pixelsWide, static_cast<float>(i+1) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
-			vertexLine.position = vertexPiece.position;
-			m_lines.append(vertexLine);
-			m_lines.append(vertexLine);
-			vertexOutline.position = vertexPiece.position;
-			m_ouitline.append(vertexOutline);
-			m_ouitline.append(vertexOutline);
+			addTwoVertexs(vertexPiece.position);
+			
 			m_startingPoints[currentVertex] = vertexPiece.position;
 			m_startingPoints[currentVertex++].z = 1.0f;
 
 			vertexPiece.position = topLeft + sf::Vector2f{ 0.0f, PIECE_HEIGHT };
 			vertexPiece.texCoords = sf::Vector2f{ static_cast<float>(j)  / COLS * pixelsWide, static_cast<float>(i + 1) / ROWS * pixelsTall };
 			m_pieces.append(vertexPiece);
-			vertexLine.position = vertexPiece.position;
-			m_lines.append(vertexLine);
-			m_lines.append(vertexLine);
-			vertexOutline.position = vertexPiece.position;
-			m_ouitline.append(vertexOutline);
-			m_ouitline.append(vertexOutline);
-			m_lines.append(lineStart);
-			vertexOutline.position = lineStart.position;
-			m_ouitline.append(vertexOutline);
+			addTwoVertexs(vertexPiece.position);
+			addOneVertex(startingCorner);
+			
 			m_startingPoints[currentVertex] = vertexPiece.position;
 			m_startingPoints[currentVertex++].z = 1.0f;
 
@@ -496,4 +500,21 @@ void Game::rotate(int t_angle)
 	{
 		m_rotations[m_currentPiece] += t_angle;
 	}
+}
+
+void Game::addOneVertex(sf::Vector2f t_position)
+{
+	sf::Vertex vertexOutline{ sf::Vector2f{0.0f,0.0f}, DARKGREEN };
+	sf::Vertex vertexLine{ sf::Vector2f{0.0f,0.0f}, sf::Color::Black };
+	vertexLine.position = t_position;
+	vertexOutline.position = t_position;
+	m_ouitline.append(vertexOutline);
+	m_lines.append(vertexLine);
+
+}
+
+void Game::addTwoVertexs(sf::Vector2f t_position)
+{
+	addOneVertex(t_position);
+	addOneVertex(t_position);
 }
